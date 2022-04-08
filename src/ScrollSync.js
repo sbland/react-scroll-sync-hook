@@ -1,147 +1,155 @@
-import React, { Component } from 'react'
-import PropTypes from 'prop-types'
+import PropTypes from 'prop-types';
+import { useCallback } from 'react';
+import { useState } from 'react';
+import { useEffect } from 'react';
 
 /**
  * ScrollSync provider component
  *
  */
 
-export default class ScrollSync extends Component {
+export const useScrollSync = ({
+  enabled = true,
+  onSync,
+  proportional = true,
+  vertical = true,
+  horizontal = true,
+}) => {
+  const [panes, setPanes] = useState([]);
 
-  static propTypes = {
-    /**
-     * Callback to be invoked any time synchronization happens
-     *
-     * @param {Element} el The element that has received the scroll event
-     */
-    onSync: PropTypes.func,
-    children: PropTypes.element.isRequired,
-    proportional: PropTypes.bool,
-    vertical: PropTypes.bool,
-    horizontal: PropTypes.bool,
-    enabled: PropTypes.bool
-  };
+  const findPane = useCallback(
+    (node) => {
+      return panes.find((pane) => pane === node);
+    },
+    [panes]
+  );
 
-  static defaultProps = {
-    proportional: true,
-    vertical: true,
-    horizontal: true,
-    enabled: true
-  };
+  const syncScrollPosition = useCallback(
+    (scrolledPane, pane) => {
+      const { scrollTop, scrollHeight, clientHeight, scrollLeft, scrollWidth, clientWidth } =
+        scrolledPane;
 
-  static childContextTypes = {
-    registerPane: PropTypes.func,
-    unregisterPane: PropTypes.func
-  }
+      const scrollTopOffset = scrollHeight - clientHeight;
+      const scrollLeftOffset = scrollWidth - clientWidth;
 
-  getChildContext() {
-    return {
-      registerPane: this.registerPane,
-      unregisterPane: this.unregisterPane
-    }
-  }
-
-  panes = {}
-
-  registerPane = (node, groups) => {
-    groups.forEach((group) => {
-      if (!this.panes[group]) {
-        this.panes[group] = []
+      /* Calculate the actual pane height */
+      const paneHeight = pane.scrollHeight - clientHeight;
+      const paneWidth = pane.scrollWidth - clientWidth;
+      /* Adjust the scrollTop position of it accordingly */
+      if (vertical && scrollTopOffset > 0) {
+        pane.scrollTop = proportional ? (paneHeight * scrollTop) / scrollTopOffset : scrollTop; // eslint-disable-line
       }
-
-      if (!this.findPane(node, group)) {
-        if (this.panes[group].length > 0) {
-          this.syncScrollPosition(this.panes[group][0], node)
-        }
-        this.panes[group].push(node)
+      if (horizontal && scrollLeftOffset > 0) {
+        pane.scrollLeft = proportional ? (paneWidth * scrollLeft) / scrollLeftOffset : scrollLeft; // eslint-disable-line
       }
-    })
-    this.addEvents(node, groups)
-  }
+    },
+    [vertical, horizontal]
+  );
 
-  unregisterPane = (node, groups) => {
-    groups.forEach((group) => {
-      if (this.findPane(node, group)) {
-        this.removeEvents(node)
-        this.panes[group].splice(this.panes[group].indexOf(node), 1)
-      }
-    })
-  }
 
-  addEvents = (node, groups) => {
-    /* For some reason element.addEventListener doesnt work with document.body */
-    node.onscroll = this.handlePaneScroll.bind(this, node, groups) // eslint-disable-line
-  }
-
-  removeEvents = (node) => {
+  const removeEvents = useCallback((node) => {
     /* For some reason element.removeEventListener doesnt work with document.body */
-    node.onscroll = null // eslint-disable-line
-  }
+    node.onscroll = null; // eslint-disable-line
+  }, []);
 
-  findPane = (node, group) => {
-    if (!this.panes[group]) {
-      return false
-    }
-
-    return this.panes[group].find(pane => pane === node)
-  }
-
-  handlePaneScroll = (node, groups) => {
-    if (!this.props.enabled) {
-      return
-    }
-
-    window.requestAnimationFrame(() => {
-      this.syncScrollPositions(node, groups)
-    })
-  }
-
-  syncScrollPosition(scrolledPane, pane) {
-    const {
-      scrollTop,
-      scrollHeight,
-      clientHeight,
-      scrollLeft,
-      scrollWidth,
-      clientWidth
-    } = scrolledPane
-
-    const scrollTopOffset = scrollHeight - clientHeight
-    const scrollLeftOffset = scrollWidth - clientWidth
-
-    const { proportional, vertical, horizontal } = this.props
-
-    /* Calculate the actual pane height */
-    const paneHeight = pane.scrollHeight - clientHeight
-    const paneWidth = pane.scrollWidth - clientWidth
-    /* Adjust the scrollTop position of it accordingly */
-    if (vertical && scrollTopOffset > 0) {
-      pane.scrollTop = proportional ? (paneHeight * scrollTop) / scrollTopOffset : scrollTop // eslint-disable-line
-    }
-    if (horizontal && scrollLeftOffset > 0) {
-      pane.scrollLeft = proportional ? (paneWidth * scrollLeft) / scrollLeftOffset : scrollLeft // eslint-disable-line
-    }
-  }
-
-  syncScrollPositions = (scrolledPane, groups) => {
-    groups.forEach((group) => {
-      this.panes[group].forEach((pane) => {
+  const syncScrollPositions = useCallback(
+    (scrolledPane, _panes) => {
+      _panes.forEach((paneNodeRef) => {
         /* For all panes beside the currently scrolling one */
-        if (scrolledPane !== pane) {
+        if (scrolledPane !== paneNodeRef) {
           /* Remove event listeners from the node that we'll manipulate */
-          this.removeEvents(pane, group)
-          this.syncScrollPosition(scrolledPane, pane)
+          removeEvents(paneNodeRef);
+          syncScrollPosition(scrolledPane, paneNodeRef);
           /* Re-attach event listeners after we're done scrolling */
           window.requestAnimationFrame(() => {
-            this.addEvents(pane, groups)
-          })
+            addEvents(paneNodeRef, _panes);
+          });
         }
-      })
-    })
-    if (this.props.onSync) this.props.onSync(scrolledPane)
-  }
+      });
+      if (onSync) onSync(scrolledPane);
+    },
+    [removeEvents, syncScrollPosition, onSync]
+  );
 
-  render() {
-    return React.Children.only(this.props.children)
-  }
-}
+
+  const handlePaneScroll = useCallback(
+    (node, _panes) => {
+      if (!enabled) {
+        return;
+      }
+      window.requestAnimationFrame(() => {
+        syncScrollPositions(node, _panes);
+      });
+    },
+    [syncScrollPosition]
+  );
+
+  const addEvents = useCallback(
+    (node, _panes) => {
+      /* For some reason element.addEventListener doesnt work with document.body */
+      node.onscroll = handlePaneScroll.bind(this, node, _panes); // eslint-disable-line
+    },
+    [handlePaneScroll]
+  );
+
+  const registerPane = useCallback(
+    (node) => {
+      if (!findPane(node)) {
+        if (panes.length > 0) {
+          syncScrollPosition(panes[0], node);
+        }
+        setPanes((prev) => [...prev, node]);
+      }
+    },
+    [panes, findPane, addEvents]
+  );
+
+  const unregisterPane = useCallback(
+    (node) => {
+      if (findPane(node)) {
+        removeEvents(node);
+        setPanes((prev) => prev.splice(prev.indexOf(node), 1));
+      }
+    },
+    [findPane, removeEvents]
+  );
+
+  useEffect(() => {
+    // Update events when registering more panes
+    panes.forEach((pane) => {
+      addEvents(pane, panes);
+    })
+  }, [panes])
+
+  return {
+    registerPane,
+    unregisterPane,
+  };
+};
+
+useScrollSync.propTypes = {
+  /**
+   * Callback to be invoked any time synchronization happens
+   *
+   * @param {Element} el The element that has received the scroll event
+   */
+  onSync: PropTypes.func,
+  children: PropTypes.element.isRequired,
+  proportional: PropTypes.bool,
+  vertical: PropTypes.bool,
+  horizontal: PropTypes.bool,
+  enabled: PropTypes.bool,
+};
+
+useScrollSync.defaultProps = {
+  proportional: true,
+  vertical: true,
+  horizontal: true,
+  enabled: true,
+};
+
+useScrollSync.childContextTypes = {
+  registerPane: PropTypes.func,
+  unregisterPane: PropTypes.func,
+};
+
