@@ -1,14 +1,12 @@
 import PropTypes from 'prop-types';
-import { useCallback } from 'react';
-import { useState } from 'react';
-import { useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 
 /**
  * ScrollSync provider component
  *
  */
 
-export const useScrollSync = ({
+const useScrollSync = ({
   enabled = true,
   onSync,
   proportional = true,
@@ -26,8 +24,14 @@ export const useScrollSync = ({
 
   const syncScrollPosition = useCallback(
     (scrolledPane, pane) => {
-      const { scrollTop, scrollHeight, clientHeight, scrollLeft, scrollWidth, clientWidth } =
-        scrolledPane;
+      const {
+        scrollTop,
+        scrollHeight,
+        clientHeight,
+        scrollLeft,
+        scrollWidth,
+        clientWidth,
+      } = scrolledPane;
 
       const scrollTopOffset = scrollHeight - clientHeight;
       const scrollLeftOffset = scrollWidth - clientWidth;
@@ -37,15 +41,18 @@ export const useScrollSync = ({
       const paneWidth = pane.scrollWidth - clientWidth;
       /* Adjust the scrollTop position of it accordingly */
       if (vertical && scrollTopOffset > 0) {
-        pane.scrollTop = proportional ? (paneHeight * scrollTop) / scrollTopOffset : scrollTop; // eslint-disable-line
+        pane.scrollTop = proportional
+          ? (paneHeight * scrollTop) / scrollTopOffset
+          : scrollTop; // eslint-disable-line
       }
       if (horizontal && scrollLeftOffset > 0) {
-        pane.scrollLeft = proportional ? (paneWidth * scrollLeft) / scrollLeftOffset : scrollLeft; // eslint-disable-line
+        pane.scrollLeft = proportional
+          ? (paneWidth * scrollLeft) / scrollLeftOffset
+          : scrollLeft; // eslint-disable-line
       }
     },
     [vertical, horizontal]
   );
-
 
   const removeEvents = useCallback((node) => {
     /* For some reason element.removeEventListener doesnt work with document.body */
@@ -70,7 +77,6 @@ export const useScrollSync = ({
     },
     [removeEvents, syncScrollPosition, onSync]
   );
-
 
   const handlePaneScroll = useCallback(
     (node, _panes) => {
@@ -118,8 +124,8 @@ export const useScrollSync = ({
     // Update events when registering more panes
     panes.forEach((pane) => {
       addEvents(pane, panes);
-    })
-  }, [panes])
+    });
+  }, [panes]);
 
   return {
     registerPane,
@@ -153,3 +159,4 @@ useScrollSync.childContextTypes = {
   unregisterPane: PropTypes.func,
 };
 
+export default useScrollSync

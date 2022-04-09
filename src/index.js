@@ -1,1 +1,1 @@
-export { useScrollSync } from './ScrollSync'
+export { default as ScrollSync } from './ScrollSync'
