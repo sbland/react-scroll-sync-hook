@@ -1,11 +1,11 @@
 {
   "name": "react-scroll-sync-hook",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Synchronize scroll positions across multiple scrollable containers",
   "main": "dist/index.js",
   "scripts": {
     "clean": "rimraf ./dist",
-    "prebuild": "npm run lint",
+    "prebuild_skip": "npm run lint",
     "build": "NODE_ENV=production npm run clean && webpack",
     "prepublish": "npm run build",
     "lint": "eslint .",
@@ -32,24 +32,6 @@
     "url": "https://github.com/sbland/react-scroll-sync-hook/issues"
   },
   "homepage": "https://github.com/sbland/react-scroll-sync-hook#readme",
-  "eslintConfig": {
-    "extends": "okonet",
-    "rules": {
-      "react/forbid-prop-types": 0
-    },
-    "import/no-extraneous-dependencies": [
-      "error",
-      {
-        "peerDependencies": [
-          "src/*.js"
-        ],
-        "devDependencies": [
-          "**/*.test.js",
-          "**/*.spec.js"
-        ]
-      }
-    ]
-  },
   "devDependencies": {
     "babel-loader": "6.2.5",
     "babel-plugin-add-module-exports": "0.2.1",
@@ -57,7 +39,6 @@
     "babel-preset-react": "6.16.0",
     "babel-preset-stage-1": "6.16.0",
     "eslint": "3.7.1",
-    "eslint-config-okonet": "1.1.1",
     "jest": "16.0.0",
     "lint-staged": "3.0.3",
     "npmpub": "3.1.0",
